@@ -12,6 +12,9 @@ import java.util.Scanner;
     private ArrayList<String> mState;
     private ArrayList<String> moutSignals;
      public MooreMachines(){
+         this.mTable = new ArrayList<ArrayList<String>>();
+         this.mState = new ArrayList<String>();
+         this.moutSignals = new ArrayList<String>();
     }
      public MooreMachines(MooreMachines original) {
          this.mTable = new ArrayList<ArrayList<String>>(original.getTable());

@@ -2,6 +2,7 @@ import java.lang.reflect.Array;
 import java.util.*;
 
 public class Minimization {
+    private final String DELIMITER = "/";
     private MooreMachines mMoore;
     public Minimization(MooreMachines moore) throws CloneNotSupportedException {
         mMoore = new MooreMachines(moore);
@@ -12,17 +13,147 @@ public class Minimization {
         moore.printTable();*/
     }
 
+    private MooreMachines getResultingTable(Map<String, ArrayList<String>> equivalenceMap ) {
+        MooreMachines moore = new MooreMachines();
+
+        //init output signal
+        for (Map.Entry<String, ArrayList<String>> pair : equivalenceMap.entrySet()) {
+            String key = pair.getKey();
+            moore.getOutputSignals().add(key.split(DELIMITER)[0]);
+        }
+
+        //init state
+        for (int i = 0; i < moore.getOutputSignals().size(); ++i) {
+            moore.getState().add(/*"q" + */"" + (i + 1));
+        }
+
+        ArrayList<ArrayList<String>> mooreTable =  moore.getTable();
+        for(int i = 0; i < mMoore.getTable().size(); ++i) {
+            mooreTable.add(new ArrayList<String>());
+
+        }
+
+        for(Map.Entry<String, ArrayList<String>> pair : equivalenceMap.entrySet()) {
+            String state = pair.getValue().get(0);
+            int indexStateInStartTable =  getIndexByStateName(state);
+            for(int indexStartTable = 0; indexStartTable < mMoore.getTable().size(); indexStartTable++) {
+                String transition = mMoore.getTable().get(indexStartTable).get(indexStateInStartTable);
+
+                int i = 0;
+                for(Map.Entry<String, ArrayList<String>> pairEquivalence : equivalenceMap.entrySet()) {
+                    if (pairEquivalence.getValue().contains(transition)) {
+                        mooreTable.get(indexStartTable).add("" + (i + 1));
+
+                    }
+                    ++i;
+                }
+            }
+        }
+        return moore;
+    }
+
+    private boolean compareEquivalentClass(Map<String, ArrayList<String>> oldEquivalentMap,
+                                           Map<String, ArrayList<String>> newEquivalentMap) {
+
+        if(oldEquivalentMap.size() != newEquivalentMap.size()) {
+            return false;
+        }
+        Set<ArrayList<String>> values1 = new HashSet<>(oldEquivalentMap.values());
+        Set<ArrayList<String>> values2 = new HashSet<>(newEquivalentMap.values());
+        return values1.equals(values2);
+    }
+
+    private void splittingClassesEquivalence(Map<String, ArrayList<String>> equivalenceMap, MooreMachines resultMoore ) {
+
+        while(true) {
+            Map<String, ArrayList<String>> newEquivalentMap = getEquivalent(resultMoore);
+            System.out.println("++++Map equivalence++++");
+            newEquivalentMap.forEach((key, value) -> System.out.println(key + " : " + value));
+            System.out.println("+++++++++++++++++++++++");
+
+
+
+            resultMoore.getTable().clear();
+            resultMoore.getState().clear();
+            resultMoore.getOutputSignals().clear();
+
+            //init output signal
+            for (Map.Entry<String, ArrayList<String>> pair : newEquivalentMap.entrySet()) {
+                String key = pair.getKey();
+                for(int i = 0; i < pair.getValue().size(); ++i) {
+                    resultMoore.getOutputSignals().add(key.split(DELIMITER)[0]);
+                }
+            }
+
+            //init state
+            for(Map.Entry<String, ArrayList<String>> pair : newEquivalentMap.entrySet()) {
+                for(String state : pair.getValue()) {
+                    resultMoore.getState().add(state);
+                }
+            }
+
+
+            ArrayList<ArrayList<String>> mooreTable =  resultMoore.getTable();
+            for(int i = 0; i < mMoore.getTable().size(); ++i) {
+                mooreTable.add(new ArrayList<String>());
+            }
+
+            for(Map.Entry<String, ArrayList<String>> pair : newEquivalentMap.entrySet()) {
+                for(int i = 0; i < pair.getValue().size(); ++i) {
+                    int indexStateInStartTable =  getIndexByStateName(pair.getValue().get(i));
+                    for(int indexStartTable = 0; indexStartTable < mMoore.getTable().size(); indexStartTable++) {
+                        String transition = mMoore.getTable().get(indexStartTable).get(indexStateInStartTable);
+
+                        int index = 0;
+                        for(Map.Entry<String, ArrayList<String>> pairEquivalence : newEquivalentMap.entrySet()) {
+                            if (pairEquivalence.getValue().contains(transition)) {
+                                mooreTable.get(indexStartTable).add("" + (index + 1));
+
+                            }
+                            ++index;
+                        }
+                    }
+                }
+            }
+            System.out.println(resultMoore.getOutputSignals());
+            System.out.println(resultMoore.getState());
+            System.out.println(resultMoore.getTable());
+
+            if(compareEquivalentClass(equivalenceMap, newEquivalentMap)) {
+                break;
+            }
+            equivalenceMap.putAll(newEquivalentMap);
+
+        }
+    }
 
     public MooreMachines getMinimizeMooreMachines() {
         MooreMachines resultMoore = new MooreMachines(mMoore);
-        zeroEquivalence(resultMoore);
 
-        Map<String, ArrayList<String>> oldEquivalence = new LinkedHashMap<String,  ArrayList<String>>();
-        while(true) {
-            Map<String, ArrayList<String>> newEquivalence = getEquivalent(resultMoore);
-            newEquivalence.forEach((key, value) -> System.out.println(key + " : " + value));
-            break;
+        zeroEquivalence(resultMoore);
+        System.out.println("________~0 экв________");
+        System.out.println(resultMoore.getOutputSignals());
+        System.out.println(resultMoore.getState());
+        for(ArrayList<String> array : resultMoore.getTable()) {
+            System.out.println(array);
         }
+        System.out.println("_______________________");
+
+
+        Map<String, ArrayList<String>> equivalenceMap = new LinkedHashMap<String, ArrayList<String>>();
+        splittingClassesEquivalence(equivalenceMap, resultMoore);
+
+
+
+        resultMoore = getResultingTable(equivalenceMap);
+        System.out.println("=======================");
+        System.out.println(resultMoore.getOutputSignals());
+        System.out.println(resultMoore.getState());
+        for(ArrayList<String> array : resultMoore.getTable()) {
+            System.out.println(array);
+        }
+        System.out.println("=======================");
+
 
         return resultMoore;
     }
@@ -82,14 +213,6 @@ public class Minimization {
                 value.set(i, resultMoore.getOutputSignals().get(getIndexByStateName(value.get(i))));
             }
         }
-        System.out.println("________~0 экв________");
-        System.out.println(resultMoore.getOutputSignals());
-        System.out.println(resultMoore.getState());
-        for(ArrayList<String> array : resultMoore.getTable()) {
-            System.out.println(array);
-        }
-        System.out.println("_______________________");
-        //разбить
     }
 
     private int getIndexByStateName(String name)
